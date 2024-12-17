@@ -18,7 +18,7 @@ See more from [Nuclio CLI].
 
 ### Deploy Function to Nuclio
 ```bash
-nuctl deploy --project-name cvat --path "." --platform local
+nuctl deploy --project-name cvat --path "./src" --platform local
 ```
 
 
