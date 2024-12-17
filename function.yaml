@@ -1,0 +1,67 @@
+metadata:
+  name: smartsurgery-dentistry-segmentation-yolov11x
+  namespace: cvat
+  annotations:
+    name: Yolo v11x
+    type: detector
+    spec: |
+      [
+        { "id": 0, "name": "Alveolar_bone", "type": "mask" },
+        { "id": 1, "name": "Caries", "type": "mask" },
+        { "id": 2, "name": "Crown", "type": "mask" },
+        { "id": 3, "name": "Dentin", "type": "mask" },
+        { "id": 4, "name": "Enamel", "type": "mask" },
+        { "id": 5, "name": "Implant", "type": "mask" },
+        { "id": 6, "name": "Mandibular_alveolar_nerve", "type": "mask" },
+        { "id": 7, "name": "Maxillary_sinus", "type": "mask" },
+        { "id": 8, "name": "Periapical_lesion", "type": "mask" },
+        { "id": 9, "name": "Post_and_core", "type": "mask" },
+        { "id": 10, "name": "Pulp", "type": "mask" },
+        { "id": 11, "name": "Restoration", "type": "mask" },
+        { "id": 12, "name": "Root_canal_filling", "type": "mask" }
+      ]
+
+spec:
+  description: Yolo v11x from sst
+  runtime: 'python:3.9'
+  handler: main:handler
+  eventTimeout: 30s
+
+  build:
+    image: dentistry-inference-segmentation-yolov11x:latest-gpu
+    baseImage: python:3.9
+
+    directives:
+      preCopy:
+        - kind: ENV
+          value: DEBIAN_FRONTEND=noninteractive
+        - kind: WORKDIR
+          value: /opt/nuclio
+        - kind: RUN
+          value: apt-get update && apt-get install -y libgl1-mesa-glx
+        - kind: RUN
+          value: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+        - kind: RUN
+          value: pip install -U "huggingface_hub[cli]" ultralytics scikit-image
+        - kind: RUN
+          value: git config --global credential.helper store && huggingface-cli login --token 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 --add-to-git-credential
+        - kind: RUN
+          value: huggingface-cli download smartsurgery/dentistry-models all_category/dentistry_yolov11x-seg-all_4.42.pt --local-dir /tmp
+        - kind: RUN
+          value: mkdir -p /opt/nuclio && mv /tmp/all_category/dentistry_yolov11x-seg-all_4.42.pt /opt/nuclio/model.pt && rm /tmp/* -rf
+
+
+  triggers:
+    myHttpTrigger:
+      maxWorkers: 1
+      kind: 'http'
+      workerAvailabilityTimeoutMilliseconds: 10000
+      attributes:
+        maxRequestBodySize: 33554432 # 32MB
+
+  platform:
+    attributes:
+      restartPolicy:
+        name: always
+        maximumRetryCount: 3
+      mountMode: volume
