@@ -1,0 +1,60 @@
+metadata:
+  name: dentistry-measurement-yolov11x
+  namespace: cvat
+  annotations:
+    name: dentistry-measurement-yolov11x
+    type: detector
+    spec: |
+      [
+        { "id": 0, "name": "CEJ", "type": "points" },
+        { "id": 1, "name": "ALC", "type": "points" },
+        { "id": 2, "name": "APEX", "type": "points" }
+      ]
+
+spec:
+  description: Yolo v11x from sst
+  runtime: 'python:3.9'
+  handler: main:handler
+  eventTimeout: 30s
+
+  build:
+    image: dentistry-measurement-yolov11x:latest-gpu
+    baseImage: python:3.9
+
+    directives:
+      preCopy:
+        - kind: ENV
+          value: DEBIAN_FRONTEND=noninteractive
+        - kind: WORKDIR
+          value: /opt/nuclio
+        - kind: RUN
+          value: apt-get update && apt-get install -y libgl1-mesa-glx
+        - kind: RUN
+          value: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+        - kind: RUN
+          value: pip install -U "huggingface_hub[cli]" ultralytics scikit-image
+        - kind: RUN
+          value: git config --global credential.helper store && huggingface-cli login --token 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 --add-to-git-credential
+        - kind: RUN
+          value: huggingface-cli download smartsurgery/dentistry-models all_category/dentistry_yolov11x-seg-all_4.42.pt --local-dir /tmp && huggingface-cli download smartsurgery/dentistry-models dental_contour/dentistryContour_yolov11n-seg_4.46.pt --local-dir /tmp
+        - kind: RUN
+          value: mkdir -p /opt/nuclio /opt/nuclio/tests && mv /tmp/all_category/dentistry_yolov11x-seg-all_4.42.pt /opt/nuclio/segmentation-model.pt && mv /tmp/dental_contour/dentistryContour_yolov11n-seg_4.46.pt /opt/nuclio/contour-model.pt && rm /tmp/* -rf
+
+  triggers:
+    myHttpTrigger:
+      maxWorkers: 1
+      kind: 'http'
+      workerAvailabilityTimeoutMilliseconds: 10000
+      attributes:
+        maxRequestBodySize: 33554432 # 32MB
+
+  resources:
+    limits:
+      nvidia.com/gpu: 1
+
+  platform:
+    attributes:
+      restartPolicy:
+        name: always
+        maximumRetryCount: 3
+      mountMode: volume

@@ -1,8 +1,8 @@
 metadata:
-  name: smartsurgery-dentistry-segmentation-yolov11x
+  name: dentistry-segmentation-yolov11x
   namespace: cvat
   annotations:
-    name: Yolo v11x
+    name: dentistry-segmentation-yolov11x
     type: detector
     spec: |
       [
@@ -28,7 +28,7 @@ spec:
   eventTimeout: 30s
 
   build:
-    image: dentistry-inference-segmentation-yolov11x:latest-gpu
+    image: dentistry-segmentation-yolov11x:latest-gpu
     baseImage: python:3.9
 
     directives:
@@ -58,6 +58,12 @@ spec:
       workerAvailabilityTimeoutMilliseconds: 10000
       attributes:
         maxRequestBodySize: 33554432 # 32MB
+
+  resources:
+    limits:
+      nvidia.com/gpu: 1  resources:
+    limits:
+      nvidia.com/gpu: 1
 
   platform:
     attributes:
